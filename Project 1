@@ -1,0 +1,103 @@
+use new_schema;
+
+select * from orders;
+
+alter table orders
+rename column `Order Date` to order_date;
+rename column `Ship Mode` to ship_mode,
+rename column `segment` to segment,
+rename column `country` to country,
+rename column `City` to city,
+rename column `State` to state,
+rename column `Postal Code` to postal_code,
+rename column `Region` to region,
+rename column `Category` to category,
+rename column `Sub Category` to sub_category,
+rename column `Product Id` to product_id,
+rename column `cost price` to cost_price,
+rename column `List Price` to list_price,
+rename column `Quantity` to quantity,
+rename column `Discount Percent` to discount_percent;
+
+alter table orders
+modify order_date datetime;
+
+alter table orders
+add discount decimal(5, 2)
+as (list_price * discount_percent * 0.01);
+
+alter table orders
+add sale_price decimal(5,2)
+as (list_price - discount);
+
+alter table orders
+add profit decimal (5,2)
+as (sale_price - cost_price);
+
+alter table orders
+add primary key (order_id);
+
+-- find top 10 highest revenue generating products
+
+Execute:
+> select product_id, sum(sale_price) as sales
+from orders
+group by product_id
+order by sales desc
+limit 10
+
++ --------------- + ---------- +
+| product_id      | sales      |
++ --------------- + ---------- +
+| TEC-AC-10002049 | 10740.75   |
+| FUR-CH-10004287 | 9664.46    |
+| FUR-CH-10000454 | 8179.27    |
+| FUR-CH-10001215 | 7997.95    |
+| OFF-BI-10001359 | 7373.34    |
+| TEC-CO-10001449 | 6852.75    |
+| OFF-ST-10003716 | 6752.88    |
+| FUR-TA-10000577 | 6544.37    |
+| OFF-ST-10004459 | 6449.65    |
+| FUR-BO-10002545 | 6265.88    |
++ --------------- + ---------- +
+10 rows
+
+-- find top 5 highest selling products in each region
+Execute:
+> with cte as (
+select region, product_id, sum(sale_price) as sales
+from orders
+group by region, product_id
+order by sales desc)
+select * from (
+select *
+, row_number() over (partition by region order by sales desc) as rn
+from cte) A
+where rn <= 5
+
++ ----------- + --------------- + ---------- + ------- +
+| region      | product_id      | sales      | rn      |
++ ----------- + --------------- + ---------- + ------- +
+| Central     | TEC-MA-10000822 | 2999.97    | 1       |
+| Central     | FUR-CH-10002024 | 2960.38    | 2       |
+| Central     | OFF-BI-10003527 | 2737.18    | 3       |
+| Central     | FUR-CH-10004287 | 2726.59    | 4       |
+| Central     | TEC-PH-10000895 | 2695.39    | 5       |
+| East        | TEC-PH-10002885 | 3748.77    | 1       |
+| East        | FUR-CH-10000454 | 3619.38    | 2       |
+| East        | FUR-CH-10000785 | 3571.20    | 3       |
+| East        | TEC-AC-10002049 | 3540.98    | 4       |
+| East        | TEC-AC-10003033 | 3401.18    | 5       |
+| South       | OFF-ST-10003716 | 4203.09    | 1       |
+| South       | OFF-BI-10001359 | 2999.97    | 2       |
+| South       | TEC-PH-10001530 | 2607.58    | 3       |
+| South       | TEC-PH-10000984 | 2252.10    | 4       |
+| South       | FUR-CH-10000454 | 2021.30    | 5       |
+| West        | FUR-CH-10001215 | 6311.96    | 1       |
+| West        | FUR-CH-10004287 | 4925.98    | 2       |
+| West        | TEC-AC-10002049 | 4149.47    | 3       |
+| West        | FUR-CH-10003973 | 3690.98    | 4       |
+| West        | OFF-ST-10000078 | 3627.17    | 5       |
++ ----------- + --------------- + ---------- + ------- +
+20 rows
+
